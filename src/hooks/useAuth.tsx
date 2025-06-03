@@ -23,31 +23,72 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // Start with true
   const [error, setError] = useState<string | null>(null);
 
-  // Check if user is authenticated on app load
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-    
-    if (token && userData) {
+    const initAuth = async () => {
+      setIsLoading(true);
       try {
+        const token = localStorage.getItem('authToken');
+        const userData = localStorage.getItem('userData');
+        
+        if (!token || !userData) {
+          setIsAuthenticated(false);
+          setUser(null);
+          return;
+        }
+
+        // First set the stored data
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         setIsAuthenticated(true);
+
+        // Then verify with the backend
+        try {
+          const response = await fetch(`${API_BASE_URL}/auth/verify-token`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok && data.success) {
+            // Update with fresh data from server
+            setUser(data.data.user);
+            setIsAuthenticated(true);
+          } else {
+            // Token is invalid - clear everything
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        } catch (error) {
+          // Network error - keep using stored data
+          console.error('Token verification failed:', error);
+          // Don't clear authentication on network errors
+        }
       } catch (error) {
-        // Invalid stored data, clear it
+        console.error('Auth initialization error:', error);
+        // Clear everything on initialization error
         localStorage.removeItem('authToken');
         localStorage.removeItem('userData');
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
-  }, []);
+    };
+
+    initAuth();
+  }, []); 
 
   const login = async (credentials: { email: string; password: string; rememberMe?: boolean }) => {
     try {

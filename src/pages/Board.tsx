@@ -5,14 +5,15 @@ import TaskBoard from '../components/TaskBoard';
 import { useAuth } from '../hooks/useAuth';
 
 const Board = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated,isLoading} = useAuth();
+  console.log("Checking inside the board page",isAuthenticated)
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       navigate('/login');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated,isLoading, navigate]);
 
   if (!isAuthenticated) {
     return null;

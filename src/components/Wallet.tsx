@@ -10,6 +10,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+// Extend Window interface to include ethereum property
+declare global {
+  interface Window {
+    ethereum?: {
+      isMetaMask?: boolean;
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+    };
+  }
+}
+
+
 const WalletConnect = () => {
   const { user, updateWallet } = useAuth();
   const [isConnecting, setIsConnecting] = useState(false);
