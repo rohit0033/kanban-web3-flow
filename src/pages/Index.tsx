@@ -1,26 +1,21 @@
-
-import { useState } from 'react';
-import Header from '../components/Header';
-import TaskBoard from '../components/TaskBoard';
-import AuthModal from '../components/AuthModal';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const Index = () => {
-  const { user, isAuthenticated } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(!isAuthenticated);
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
-  if (!isAuthenticated) {
-    return <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />;
-  }
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/board');
+    } else {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-600">
-      <Header user={user} />
-      <main className="container mx-auto px-4 py-8">
-        <TaskBoard />
-      </main>
-    </div>
-  );
+  // This component will only render briefly during redirection
+  return null;
 };
 
 export default Index;

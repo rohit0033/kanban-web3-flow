@@ -4,12 +4,13 @@ import { MoreVertical, Edit, Trash2, Clock, CheckCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Task } from './TaskBoard';
 
 interface TaskCardProps {
-  task: any;
-  onEdit: (task: any) => void;
+  task: Task;
+  onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
-  onStatusChange: (taskId: string, updates: any) => void;
+  onStatusChange: (taskId: string, updates: Partial<Task>) => void;
 }
 
 const TaskCard = ({ task, onEdit, onDelete, onStatusChange }: TaskCardProps) => {

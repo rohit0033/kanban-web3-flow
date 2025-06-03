@@ -2,13 +2,14 @@
 import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import TaskCard from './TaskCard';
+import { Task } from './TaskBoard';
 
 interface TaskColumnProps {
   title: string;
-  tasks: any[];
-  onEditTask: (task: any) => void;
+  tasks: Task[];
+  onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
-  onStatusChange: (taskId: string, updates: any) => void;
+  onStatusChange: (taskId: string, updates: Partial<Task>) => void;
   status: string;
 }
 

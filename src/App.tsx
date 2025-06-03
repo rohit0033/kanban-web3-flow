@@ -8,6 +8,9 @@ import { AuthProvider } from "./hooks/useAuth";
 import { TasksProvider } from "./hooks/useTasks";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Board from "./pages/Board";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +24,9 @@ const App = () => (
           <TasksProvider>
             <Routes>
               <Route path="/" element={<Index />} />
+               <Route path="/login" element={<Login/>} />
+               <Route path="/signup" element={<Signup/>} />
+               <Route path="/board" element={<Board/>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TasksProvider>

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -6,29 +5,59 @@ import TaskColumn from './TaskColumn';
 import TaskModal from './TaskModal';
 import { useTasks } from '../hooks/useTasks';
 
+// Define the Task interface to match your useTasks hook
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  status: 'todo' | 'in-progress' | 'done';
+  priority?: 'low' | 'medium' | 'high';
+  dueDate?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 const TaskBoard = () => {
   const { tasks, addTask, updateTask, deleteTask } = useTasks();
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const handleAddTask = () => {
     setEditingTask(null);
     setShowTaskModal(true);
   };
 
-  const handleEditTask = (task: any) => {
-    setEditingTask(task);
+  const handleEditTask = (task: Task) => {
+    setEditingTask({ ...task }); // Create a copy to avoid reference issues
     setShowTaskModal(true);
   };
 
-  const handleSaveTask = (taskData: any) => {
-    if (editingTask) {
-      updateTask(editingTask.id, taskData);
-    } else {
-      addTask(taskData);
+  const handleSaveTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      if (editingTask) {
+        // When editing, only include fields the updateTask function accepts
+        // According to useTasks.tsx, we can update title, description, status, priority, dueDate
+        // but not id, createdAt, or updatedAt
+        updateTask(editingTask.id, {
+          title: taskData.title,
+          description: taskData.description,
+          status: taskData.status,
+          priority: taskData.priority,
+          dueDate: taskData.dueDate
+        });
+      } else {
+        // When adding a new task
+        // The addTask function in useTasks.tsx expects Omit<Task, 'id' | 'createdAt' | 'updatedAt'>
+        addTask(taskData);
+      }
+      
+      // Only close the modal and reset if operations were successful
+      setShowTaskModal(false);
+      setEditingTask(null);
+    } catch (error) {
+      console.error('Failed to save task:', error);
+      // You could add error handling UI here if needed
     }
-    setShowTaskModal(false);
-    setEditingTask(null);
   };
 
   const todoTasks = tasks.filter(task => task.status === 'todo');

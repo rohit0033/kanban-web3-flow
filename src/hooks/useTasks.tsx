@@ -1,73 +1,235 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+// API base URL - update this to your deployed backend URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 interface Task {
   id: string;
   title: string;
   description: string;
   status: 'todo' | 'in-progress' | 'done';
-  priority: 'low' | 'medium' | 'high';
-  dueDate: string;
+  priority?: 'low' | 'medium' | 'high'; // Optional for backward compatibility
+  dueDate?: string; // Optional for backward compatibility
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface TasksContextType {
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  fetchTasks: () => Promise<void>;
 }
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined);
 
 export const TasksProvider = ({ children }: { children: ReactNode }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Helper function to get auth token
+  const getAuthToken = () => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No authentication token found. Please login again.');
+    }
+    return token;
+  };
+
+  // Helper function for API calls
+  const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}) => {
+    const token = getAuthToken();
+    
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+
+    if (!data.success) {
+      throw new Error(data.message || 'Request failed');
+    }
+
+    return data;
+  };
+
+  // Fetch tasks from API
+  const fetchTasks = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const data = await makeAuthenticatedRequest('/tasks');
+      
+      // Define the API task interface
+      interface ApiTask {
+        _id: string;
+        title: string;
+        description?: string;
+        status: 'todo' | 'in-progress' | 'done';
+        priority?: 'low' | 'medium' | 'high';
+        dueDate?: string;
+        createdAt: string;
+        updatedAt?: string;
+      }
+      
+      // Transform backend data to match frontend interface
+      const transformedTasks = data.data.map((task: ApiTask) => ({
+        id: task._id,
+        title: task.title,
+        description: task.description || '',
+        status: task.status,
+        priority: task.priority || 'medium', // Default priority if not set
+        dueDate: task.dueDate || '', // Default empty if not set
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      }));
+
+      setTasks(transformedTasks);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch tasks';
+      setError(errorMessage);
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load tasks when component mounts and user is authenticated
   useEffect(() => {
-    const savedTasks = localStorage.getItem('tasks');
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks));
-    } else {
-      // Default sample tasks
-      const sampleTasks: Task[] = [
-        {
-          id: '1',
-          title: 'Campus build',
-          description: 'Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil) by Cicero, written in 45 BC.',
-          status: 'todo',
-          priority: 'medium',
-          dueDate: '2020-07-03',
-          createdAt: new Date().toISOString()
-        }
-      ];
-      setTasks(sampleTasks);
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      fetchTasks();
     }
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
+  const addTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      setError(null);
 
-  const addTask = (taskData: Omit<Task, 'id'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Date.now().toString()
-    };
-    setTasks(prev => [...prev, newTask]);
+      // Send only the fields that backend expects
+      const backendTaskData = {
+        title: taskData.title,
+        description: taskData.description,
+        status: taskData.status,
+      };
+
+      const response = await makeAuthenticatedRequest('/tasks', {
+        method: 'POST',
+        body: JSON.stringify(backendTaskData),
+      });
+
+      // Log the response to see its structure
+      console.log('API Response:', response);
+
+      // Extract the task data from the response
+      // Modified to handle different response structures
+      const taskResponse = response.data; // The actual task object returned by your API
+
+      if (!taskResponse) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Transform the response and add to local state
+      const newTask: Task = {
+        id: taskResponse._id,
+        title: taskResponse.title,
+        description: taskResponse.description || '',
+        status: taskResponse.status,
+        priority: taskData.priority || 'medium',
+        dueDate: taskData.dueDate || '',
+        createdAt: taskResponse.createdAt,
+        updatedAt: taskResponse.updatedAt,
+      };
+
+      setTasks(prev => [...prev, newTask]);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add task';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
-  const updateTask = (id: string, updates: Partial<Task>) => {
-    setTasks(prev => prev.map(task => 
-      task.id === id ? { ...task, ...updates } : task
-    ));
+  const updateTask = async (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    try {
+      setError(null);
+
+      // Send only the fields that backend expects
+      const backendUpdates = {
+        title: updates.title,
+        description: updates.description,
+        status: updates.status,
+      };
+
+      // Remove undefined values
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(backendUpdates).filter(([_, value]) => value !== undefined)
+      );
+
+      const response = await makeAuthenticatedRequest(`/tasks/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(cleanUpdates),
+      });
+
+      const taskResponse = response.data;
+
+      // Update local state
+      setTasks(prev => prev.map(task => 
+        task.id === id 
+          ? { 
+              ...task, 
+              ...updates,
+              updatedAt: taskResponse.updatedAt 
+            } 
+          : task
+      ));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update task';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(task => task.id !== id));
+  const deleteTask = async (id: string) => {
+    try {
+      setError(null);
+
+      await makeAuthenticatedRequest(`/tasks/${id}`, {
+        method: 'DELETE',
+      });
+
+      // Update local state
+      setTasks(prev => prev.filter(task => task.id !== id));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete task';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   return (
-    <TasksContext.Provider value={{ tasks, addTask, updateTask, deleteTask }}>
+    <TasksContext.Provider value={{ 
+      tasks, 
+      isLoading, 
+      error, 
+      addTask, 
+      updateTask, 
+      deleteTask, 
+      fetchTasks 
+    }}>
       {children}
     </TasksContext.Provider>
   );

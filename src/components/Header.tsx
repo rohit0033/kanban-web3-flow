@@ -1,11 +1,19 @@
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { useAuth } from '../hooks/useAuth';
+import WalletConnect from './Wallet';
+
+interface User {
+  id?: string;
+  name?: string;
+  email?: string;
+  avatar?: string;
+  walletAddress?: string; // Add the wallet address field
+}
 
 interface HeaderProps {
-  user: any;
+  user: User | null;
 }
 
 const Header = ({ user }: HeaderProps) => {
@@ -24,6 +32,8 @@ const Header = ({ user }: HeaderProps) => {
         </div>
         
         <div className="flex items-center space-x-4">
+          <WalletConnect />
+          
           <div className="flex items-center space-x-3">
             <Avatar className="w-10 h-10">
               <AvatarImage src={user?.avatar} alt={user?.name} />

@@ -6,16 +6,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-
+import { Task } from './TaskBoard';
+interface TaskFormData {
+  title: string;
+  description: string;
+  status: 'todo' | 'in-progress' | 'done';
+  priority: 'low' | 'medium' | 'high';
+  dueDate: string;
+}
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (task: any) => void;
-  task?: any;
+  onSave: (task: TaskFormData) => void;
+  task?: Task;
 }
 
 const TaskModal = ({ isOpen, onClose, onSave, task }: TaskModalProps) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<TaskFormData>({
     title: '',
     description: '',
     status: 'todo',
@@ -47,10 +54,7 @@ const TaskModal = ({ isOpen, onClose, onSave, task }: TaskModalProps) => {
     e.preventDefault();
     if (!formData.title.trim()) return;
     
-    onSave({
-      ...formData,
-      createdAt: task?.createdAt || new Date().toISOString()
-    });
+    onSave(formData);
   };
 
   const handleChange = (field: string, value: string) => {
